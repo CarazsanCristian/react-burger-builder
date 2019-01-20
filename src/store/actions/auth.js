@@ -7,10 +7,11 @@ export const authStart = () => {
     };
 };
 
-export const authSuccess = (authData) => {
+export const authSuccess = (token, userId) => {
     return {
         type: actionTypes.AUTH_SUCCESS,
-        authData: authData
+        idToken: token,
+        userId: userId
     };
 };
 
@@ -20,7 +21,19 @@ export const authFail = (error) => {
         error: error
     };
 };
+export const logout = () => {
+    return {
+        type: actionTypes.AUTH_LOGOUT
+    }
+}
 
+export const checkAuthTimeout = (expirationTime) => {
+    return dispath => {
+        setTimeout(() => {
+            dispath(logout());
+        }, expirationTime * 1000)
+    }
+}
 export const auth = (email, password, isSignUp) => {
     return dispatch => {
         dispatch(authStart());
@@ -29,19 +42,20 @@ export const auth = (email, password, isSignUp) => {
             password: password,
             returnSecureToken: true
         };
-        let url='https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=AIzaSyCcjDEcI-sz3Gamzyr-zDLDlhKI6qaRoPM';
-       if(!isSignUp){
-           url="https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIzaSyCcjDEcI-sz3Gamzyr-zDLDlhKI6qaRoPM";
-       }
-        axios.post(url , authData)
-            .then(response=>{
+        let url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/signupNewUser?key=AIzaSyCcjDEcI-sz3Gamzyr-zDLDlhKI6qaRoPM';
+        if (!isSignUp) {
+            url = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIzaSyCcjDEcI-sz3Gamzyr-zDLDlhKI6qaRoPM";
+        }
+        axios.post(url, authData)
+            .then(response => {
                 console.log(response);
-                dispatch(authSuccess(response.data));
-                }
+                dispatch(authSuccess(response.data.idToken, response.data.localId));
+                dispatch(checkAuthTimeout(response.data.expiresIn));
+            }
 
             ).catch(err => {
-            console.log(err);
-            dispatch(authFail(err));
-        })
+                console.log(err);
+                dispatch(authFail(err.response.data.error));
+            })
     }
 };
